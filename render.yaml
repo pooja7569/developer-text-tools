@@ -1,0 +1,22 @@
+services:
+  - type: web
+    name: developer-log-tools
+    runtime: python
+    plan: starter
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn config.wsgi:application --bind 0.0.0.0:$PORT --workers 2 --threads 2 --timeout 30
+    healthCheckPath: /api/greet/
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.13.17
+      - key: DJANGO_ENV
+        value: production
+      - key: DJANGO_SECRET_KEY
+        sync: false
+      - key: DJANGO_ALLOWED_HOSTS
+        sync: false
+      - key: DJANGO_EXTENSION_ORIGINS
+        sync: false
+      - key: DJANGO_TRUST_PROXY
+        value: "true"

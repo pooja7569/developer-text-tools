@@ -1,0 +1,16 @@
+{
+  "manifest_version": 3,
+  "name": "Local Django Popup",
+  "version": "0.1.0",
+  "permissions": ["activeTab", "scripting"],
+  "description": "A React popup connected to a local Django API.",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAwabl1/DrE/UGKPZPQ9bQCMKLKV2xSJiuAmiO3L2YTNZTcrHg2+7D8D3bu0mWxtiP+q4sB1cE0tbvhGIlWE+VmYfawBeu02Vsx2WP464m2SN0ZzuAclIODfoBnDre86U2sDTGUz+MU1tB1JGodzTO/av1s5YcTOWK+zheS1J+UgiRtOaTCj7J0P653fqxDP/3T3DpudukXnrbUS2nTGmNZOukWJRTS9zsF2jbJUjlS//Wg4HALmJlserr56sqGngWDlGWyQjbggL/l9H3Fm/XF9He1NQedZ9UXo1tdddlFJuGgKYGK+0BmlUrgi+E/dqg97FKEdIRILF2/VmF0qveYQIDAQAB",
+  "action": {
+    "default_title": "Local Django Popup",
+    "default_popup": "index.html"
+  },
+  "host_permissions": ["http://127.0.0.1/*"],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'none'; connect-src http://127.0.0.1:8000"
+  }
+}
