@@ -174,7 +174,7 @@ export default function Workspace() {
     </div>
     <textarea id="tool-output" rows={12} value={output} readOnly spellCheck={false}
       placeholder={remoteTool ? 'CSV is downloaded after conversion; check Chrome Downloads.' : 'Run a tool to see its output here.'} />
-    {output && <div className="actions compact-actions">
+    {output && <div className="actions compact-actions editor-controls" role="group" aria-label="Output actions">
       <button type="button" className="secondary" onClick={() => run(async () => {
         if (!navigator.clipboard?.writeText) throw new Error('Clipboard unavailable. Select the output and copy manually.')
         await navigator.clipboard.writeText(output); setStatus('Output copied.')
@@ -218,6 +218,7 @@ export default function Workspace() {
             ? `CSV conversion sends your input to ${cloudBuild ? 'the configured HTTPS server' : 'local Django'}. Do not send secrets or sensitive logs.`
             : 'Processed on this device. Tool input is not uploaded.'}
         </p>
+        <div className="editor-controls" role="group" aria-label="Input actions">
         {tab === 'Tools' && <div className="actions tool-actions">
           <button type="button" onClick={() => run(runSelectedTool)}>{TOOLS[tool].action}</button>
           {tool === 'json' && <button type="button" className="secondary" onClick={() => run(() => {
@@ -225,7 +226,7 @@ export default function Workspace() {
             setStatus('Valid JSON. Object paths use JSON pointer escaping; duplicate keys are rejected.')
           })}>Validate / inspect</button>}
         </div>}
-        <div className="actions compact-actions">
+        <div className="actions compact-actions draft-actions" role="group" aria-label="Draft actions">
           <button type="button" className="quiet" onClick={() => run(async () => {
             updateInput(await scrapeHighlightedText())
             setStatus('Highlighted text copied. Nothing uploaded.')
@@ -240,6 +241,7 @@ export default function Workspace() {
             updateInput(''); setBaseline(''); setRows([]); setSelected('')
             setStatus('Drafts cleared. Saved workspaces were not deleted.')
           }}>Clear drafts</button>
+        </div>
         </div>
         <p className="hint draft-hint">Drafts are temporary. Save a workspace to keep your JSON.</p>
         </section>

@@ -21,6 +21,8 @@ test('cloud popup renders tools without local notes or a local greeting request'
     assert.match(html, /role="listbox"[^>]*hidden=""/)
     assert.match(html, /JSON formatter|Log to CSV|JWT decoder/)
     assert.match(html, /Processed on this device/)
+    assert.match(html, /role="group" aria-label="Input actions"/)
+    assert.match(html, /role="group" aria-label="Draft actions"/)
     assert.match(html, /Workspaces/)
     assert.doesNotMatch(html, /<button[^>]*>Download CSV<\/button>/)
     assert.match(html, /<button[^>]*>Format JSON<\/button>/)
