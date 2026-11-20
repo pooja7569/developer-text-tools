@@ -1,14 +1,17 @@
 {
   "manifest_version": 3,
-  "name": "Local Django Popup",
-  "version": "0.1.0",
-  "permissions": ["activeTab", "scripting"],
-  "description": "A React popup connected to a local Django API.",
+  "name": "DevToolBox",
+  "version": "1.1.0",
+  "minimum_chrome_version": "116",
+  "permissions": ["activeTab", "scripting", "storage", "sidePanel"],
+  "description": "Inspect JSON, convert YAML, decode JWTs, compare API responses, and save a local workspace.",
   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAwabl1/DrE/UGKPZPQ9bQCMKLKV2xSJiuAmiO3L2YTNZTcrHg2+7D8D3bu0mWxtiP+q4sB1cE0tbvhGIlWE+VmYfawBeu02Vsx2WP464m2SN0ZzuAclIODfoBnDre86U2sDTGUz+MU1tB1JGodzTO/av1s5YcTOWK+zheS1J+UgiRtOaTCj7J0P653fqxDP/3T3DpudukXnrbUS2nTGmNZOukWJRTS9zsF2jbJUjlS//Wg4HALmJlserr56sqGngWDlGWyQjbggL/l9H3Fm/XF9He1NQedZ9UXo1tdddlFJuGgKYGK+0BmlUrgi+E/dqg97FKEdIRILF2/VmF0qveYQIDAQAB",
   "action": {
-    "default_title": "Local Django Popup",
+    "default_title": "DevToolBox",
     "default_popup": "index.html"
   },
+  "side_panel": { "default_path": "index.html" },
+  "background": { "service_worker": "background.js", "type": "module" },
   "host_permissions": ["http://127.0.0.1/*"],
   "content_security_policy": {
     "extension_pages": "script-src 'self'; object-src 'none'; connect-src http://127.0.0.1:8000"

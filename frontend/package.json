@@ -1,17 +1,20 @@
 {
   "name": "frontend",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.1.0",
   "type": "module",
   "scripts": {
     "test": "node --test",
     "dev": "vite",
     "build": "vite build",
     "build:cloud": "vite build --mode cloud",
+    "build:pro-preview": "vite build --mode pro-preview",
     "lint": "oxlint",
     "preview": "vite preview"
   },
   "dependencies": {
+    "lossless-json": "^4.3.0",
+    "yaml": "^2.8.0",
     "react": "^19.3.1",
     "react-dom": "^19.3.1"
   },

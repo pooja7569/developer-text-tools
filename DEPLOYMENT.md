@@ -6,7 +6,8 @@
 User clicks extension
   -> activeTab + scripting
   -> selected main-frame text -> React input (no upload)
-  -> Format JSON -> local JSON.parse/JSON.stringify
+  -> JSON/YAML/JWT/compare -> local precision-safe processing
+  -> Save workspace -> extension storage on this device
   -> Download CSV -> HTTPS POST /api/log-to-csv/
                    -> validate -> pandas DataFrame -> escaped CSV
                    -> browser Blob download
@@ -15,7 +16,7 @@ Local build only:
   Notes -> loopback Django -> local SQLite
 
 Cloud build:
-  Stateless tools only -> Render/Gunicorn -> no database
+  Local tools and workspaces + stateless CSV -> Render/Gunicorn -> no database
 ```
 
 The code does not claim to parse arbitrary logs. It supports:
@@ -81,9 +82,11 @@ membership. Enable those only after reviewing your domain's HTTPS coverage.
 Trust forwarded HTTPS/client-IP headers only behind a proxy that controls
 them; never expose this trusted-proxy configuration directly to the internet.
 
-Production has no notes routes, and its database engine is deliberately
-disabled. Do not copy SQLite into the cloud, and do not run migrations for
-this stateless deployment. Persistent cloud notes require a separate
+Production has no notes routes. Its database engine is deliberately disabled
+in the default stateless mode. Do not copy SQLite into the cloud or run
+migrations for that stateless deployment. Optional accounts require PostgreSQL,
+account-only migrations and separate environment configuration documented in
+[BILLING_SETUP](BILLING_SETUP.md); notes routes remain disabled. Persistent cloud notes require a separate
 authenticated, per-user storage design, typically with PostgreSQL.
 
 ## Deploy to Render
@@ -172,9 +175,13 @@ Do not submit a bundle pointing to `tools.example.com`; that hostname is used
 only in automated build tests. Rebuild with the deployed URL before packaging.
 Do not include local notes, backups, SQLite, or backend environment files.
 
-Before store publication, use the public key for the store-assigned extension
-ID in the manifest, then update `DJANGO_EXTENSION_ORIGINS` to that exact ID.
-The existing manifest key is public development metadata, not authentication.
+The cloud build omits the local development public key. Upload its zip as an
+update to the **existing** Web Store item, not as a new extension. Chrome Web
+Store preserves the published item ID. The local build retains the development
+ID for notes CORS. An unpacked cloud build without a key gets a different ID;
+temporarily allow that exact ID in Render to test CSV, then remove it again.
+Keep the published ID `nlipiinielfeldfkniccognjaaihajkd` in the production
+`DJANGO_EXTENSION_ORIGINS` allowlist. Extension IDs are not authentication.
 Do not generate or publish a private signing key. Keep all JavaScript bundled;
 do not add remote executable scripts or `eval`.
 
@@ -201,15 +208,17 @@ before enabling the broader options; do not silence these checks blindly.
 Gunicorn runs on Render's Linux host, not Windows. Local tests do not replace
 the deployed HTTPS checks or actual Chrome permission/injection checks.
 
-1. Select text on an HTTP/HTTPS page and click **Scrape Highlighted Text**.
+1. Select text on an HTTP/HTTPS page and click **Capture selection**.
 2. Confirm input changes without a network upload.
 3. Test a blocked page, no selection, and a password field.
 4. Format valid JSON and verify invalid JSON stays visible with an error.
-   Formatting uses JavaScript number semantics; do not use it to preserve
-   integers beyond JavaScript's safe numeric precision.
+   Formatting preserves JSON numeric lexemes, including large integers and
+   precise decimals. YAML conversions reject aliases, explicit tags, non-string
+   mapping keys, duplicate keys, and non-finite numbers.
 5. Convert supported sample logs and inspect CSV quoting/column order.
 6. Test unsupported lines, oversized input, and throttling.
-7. Confirm cloud UI has no notes or backup controls and cannot reach notes APIs.
+7. Confirm cloud UI has no backend notes controls and cannot reach notes APIs.
+   Local workspace backup controls are available in the cloud extension.
 8. Verify actual Chrome downloads complete. A clicked link is not proof of
    a file saved successfully.
 
@@ -220,7 +229,11 @@ Provide original icons/screenshots, a support contact, and a real privacy
 policy URL. Disclose `activeTab` and `scripting` as user-triggered selection
 capture. Do not claim automatic or background scraping.
 
-State that JSON formatting stays local, selected text stays in the popup until
+Disclose `storage` for explicitly saved local workspaces and `sidePanel` for
+the persistent developer workspace. Neither permission is for page monitoring.
+The development-only Pro preview must never be uploaded to the store.
+
+State that JSON/YAML/JWT/comparison stays local, selected text stays in the UI until
 the user requests CSV conversion, and CSV conversion transmits the input to
 your HTTPS service. Describe the data types, purpose, retention, deletion
 process, and infrastructure logs accurately. This app does not intentionally
@@ -228,7 +241,7 @@ store log bodies, but you must review Render, proxy, monitoring, and support
 retention before promising "no collection" or "zero retention."
 
 Keep the extension focused on related developer text tools. Do not market the
-cloud bundle as a cloud snippet saver: cloud notes are intentionally disabled.
+cloud bundle as a cloud snippet saver: backend cloud notes are intentionally disabled.
 Plan updates, support, dependency patching, abuse monitoring, and a rollback.
 Search traffic and approval are not guaranteed.
 

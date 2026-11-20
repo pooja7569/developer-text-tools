@@ -1,7 +1,9 @@
+import { formatJsonSafe } from './developerTools.js'
+
 const TOOLS_ORIGIN = import.meta.env?.VITE_TOOLS_API_ORIGIN ?? 'http://127.0.0.1:8000'
 
 export function formatJson(text) {
-  return JSON.stringify(JSON.parse(text), null, 2)
+  return formatJsonSafe(text)
 }
 
 export async function convertLogToCsv(log) {
