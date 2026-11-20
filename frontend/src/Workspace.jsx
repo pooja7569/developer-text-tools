@@ -9,6 +9,7 @@ import {
 import { generateModels } from './codegen.js'
 import JsonTree from './JsonTree.jsx'
 import AccountPanel from './AccountPanel.jsx'
+import ToolPicker from './ToolPicker.jsx'
 import { accountsEnabled, accountRequest } from './account.js'
 import {
   emptyStore, parseWorkspaceBackup, proPreview, readJsonFiles, STORAGE_KEY, STORAGE_LIMIT, workspaceRequest,
@@ -200,14 +201,9 @@ export default function Workspace() {
             <button key={item} type="button" className={tab === item ? 'selected' : 'secondary'}
               aria-pressed={tab === item} onClick={() => { setTab(item); setError('') }}>{item}</button>)}
         </nav>
-        {tab === 'Tools' && <div className="tool-picker">
-          <label htmlFor="tool-select">Tool</label>
-          <select id="tool-select" value={tool} onChange={(event) => {
-            setTool(event.target.value); setOutput(''); setRows([]); setError(''); setStatus('')
-          }}>
-            {Object.entries(TOOLS).map(([key, item]) => <option key={key} value={key}>{item.label}</option>)}
-          </select>
-        </div>}
+        {tab === 'Tools' && <ToolPicker options={TOOLS} value={tool} onChange={(value) => {
+          setTool(value); setOutput(''); setRows([]); setError(''); setStatus('')
+        }} />}
         <div className={`editor-grid${splitOutput || tab === 'Compare' ? ' two-editors' : ''}`}>
         <section className="input-pane" aria-label="Tool input">
         <div className="editor-heading">
