@@ -1,11 +1,26 @@
 import assert from 'node:assert/strict'
 import { afterEach, test } from 'node:test'
-import { openFullPage, openSidePanel } from './extensionViews.js'
+import { isPopupView, openFullPage, openSidePanel } from './extensionViews.js'
 
 const original = Object.getOwnPropertyDescriptor(globalThis, 'chrome')
 afterEach(() => {
   if (original) Object.defineProperty(globalThis, 'chrome', original)
   else delete globalThis.chrome
+})
+
+test('only the actual popup window gets the fixed popup layout', () => {
+  const popup = {}
+  const tab = {}
+  const panel = {}
+  globalThis.chrome = { extension: { getViews(options) {
+    assert.deepEqual(options, { type: 'popup' })
+    return [popup]
+  } } }
+  assert.equal(isPopupView(popup), true)
+  assert.equal(isPopupView(tab), false)
+  assert.equal(isPopupView(panel), false)
+  delete globalThis.chrome
+  assert.equal(isPopupView(tab), false)
 })
 
 test('opens the side panel in the active Chrome window', async () => {

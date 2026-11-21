@@ -8,6 +8,15 @@
   box-sizing: border-box;
 }
 
+.extension-popup {
+  width: 480px;
+  max-width: 100%;
+}
+
+.extension-popup body {
+  width: auto;
+}
+
 body {
   min-width: 0;
   width: 100%;

@@ -1,3 +1,8 @@
+export function isPopupView(view) {
+  const extension = globalThis.chrome?.extension
+  return Boolean(view && extension?.getViews && extension.getViews({ type: 'popup' }).includes(view))
+}
+
 export async function openSidePanel() {
   const browser = globalThis.chrome
   if (!browser?.sidePanel?.open || !browser?.tabs?.query) {
