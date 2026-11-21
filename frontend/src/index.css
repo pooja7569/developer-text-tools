@@ -189,6 +189,10 @@ header {
 }
 
 header button { width: auto; margin: 0; }
+.view-actions { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 8px; min-width: 0; }
+.view-action { min-width: 0; max-width: 160px; }
+.view-actions button { min-height: 32px; padding: 5px 8px; font-size: 12px; line-height: 1.4; }
+.view-error { margin: 5px 0 0; font-size: 11px; line-height: 1.4; }
 h1 { margin: 0; }
 h1 small { color: #536077; font-size: 12px; }
 fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }

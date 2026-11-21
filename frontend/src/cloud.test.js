@@ -17,6 +17,7 @@ test('cloud popup renders tools without local notes or a local greeting request'
     const { default: App } = await server.ssrLoadModule('/src/App.jsx')
     const html = renderToStaticMarkup(createElement(App))
     assert.match(html, /Capture selection/)
+    assert.match(html, /<button[^>]*>Open full page<\/button>/)
     assert.match(html, /role="combobox"[^>]*aria-expanded="false"/)
     assert.match(html, /role="listbox"[^>]*hidden=""/)
     assert.match(html, /JSON formatter|Log to CSV|JWT decoder/)
