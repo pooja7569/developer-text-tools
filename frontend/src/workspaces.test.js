@@ -71,20 +71,27 @@ test('workspace storage accepts exactly 4 MiB and 50 entries, rejecting values a
 
 test('background serializes writes, rejects stale popup revisions, and reports failed persistence', async () => {
   let listener
+  const windowListeners = []
+  let cleanupDone
+  const cleaned = new Promise(resolve => { cleanupDone = resolve })
   const memory = {}
   const errors = mock.method(console, 'error', () => {})
   const previous = globalThis.chrome
   globalThis.chrome = {
     runtime: { id: 'test', getURL: (path) => `chrome-extension://test/${path}`,
       onMessage: { addListener: (callback) => { listener = callback } } },
+    windows: { onRemoved: { addListener: callback => windowListeners.push(callback) } },
     storage: { local: {
       setAccessLevel: async () => {},
       get: async () => structuredClone(memory),
       set: async (value) => { await new Promise((resolve) => setTimeout(resolve, 5)); Object.assign(memory, value) },
-    } },
+    }, session: { remove: async key => { cleanupDone(key) } } },
   }
   try {
     await import('./background.js')
+    assert.equal(windowListeners.length, 1)
+    windowListeners[0](7)
+    assert.equal(await cleaned, 'devtoolbox-view-session-v1:7')
     const send = (request, sender = { id: 'test', url: 'chrome-extension://test/index.html' }) =>
       new Promise((resolve) => listener({ channel: STORAGE_KEY, ...request }, sender, resolve))
     const results = await Promise.all([
@@ -96,7 +103,13 @@ test('background serializes writes, rejects stale popup revisions, and reports f
     assert.match(results[1].error, /another window/)
     assert.equal(memory[STORAGE_KEY].workspaces.length, 1)
     assert.equal((await send({ action: 'read' })).store.workspaces[0].id, 'a')
+    assert.equal((await send({ action: 'read' }, {
+      id: 'test', url: 'chrome-extension://test/index.html?view=side-panel',
+    })).store.workspaces[0].id, 'a')
     assert.equal((await send({ action: 'read' }, { id: 'other', url: 'https://example.com' })).ok, false)
+    assert.equal((await new Promise(resolve => listener({
+      channel: 'devtoolbox-view-session-v1', action: 'restore', windowId: 7,
+    }, { id: 'other', url: 'chrome-extension://test/index.html' }, resolve))).ok, false)
     const original = structuredClone(memory[STORAGE_KEY])
     mock.method(chrome.storage.local, 'set', async () => { throw new Error('Disk unavailable') })
     const failed = await send({ action: 'delete', revision: 1, id: 'a' })
@@ -105,6 +118,7 @@ test('background serializes writes, rejects stale popup revisions, and reports f
     memory[STORAGE_KEY] = { invalid: 'data' }
     assert.equal((await send({ action: 'read' })).ok, false)
     assert.deepEqual(JSON.parse((await send({ action: 'export' })).backup), { invalid: 'data' })
+    assert.equal(windowListeners.length, 1, 'Workspace requests must not register duplicate cleanup listeners')
   } finally {
     errors.mock.restore()
     mock.restoreAll()

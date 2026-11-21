@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useImperativeHandle, useMemo, useState } from 'react'
 import { createNote, deleteNote, fetchNotes, importNotesBackup, updateNote } from './api'
 import { filterNotes } from './filterNotes'
 import { exportNotesBackup, readNotesBackup } from './backup'
@@ -13,22 +13,30 @@ function errorMessage(error) {
   return error instanceof Error ? error.message : 'Unexpected request failure.'
 }
 
-export default function Notes() {
-  const [notes, setNotes] = useState([])
-  const [query, setQuery] = useState('')
-  const [text, setText] = useState('')
-  const [isLoading, setIsLoading] = useState(true)
+export default function Notes({ initialDraft, onDraftChange, ref }) {
+  const [notes, setNotes] = useState(initialDraft?.notes ?? [])
+  const [query, setQuery] = useState(initialDraft?.query ?? '')
+  const [text, setText] = useState(initialDraft?.text ?? '')
+  const [isLoading, setIsLoading] = useState(initialDraft ? Boolean(initialDraft.loading) : true)
   const [isMutating, setIsMutating] = useState(false)
   const [isExporting, setIsExporting] = useState(false)
   const [isReadingBackup, setIsReadingBackup] = useState(false)
-  const [pendingBackup, setPendingBackup] = useState(null)
-  const [editingId, setEditingId] = useState(null)
-  const [editText, setEditText] = useState('')
-  const [deletingId, setDeletingId] = useState(null)
-  const [status, setStatus] = useState('')
-  const [error, setError] = useState('')
+  const [pendingBackup, setPendingBackup] = useState(initialDraft?.pendingBackup ?? null)
+  const [editingId, setEditingId] = useState(initialDraft?.editingId ?? null)
+  const [editText, setEditText] = useState(initialDraft?.editText ?? '')
+  const [deletingId, setDeletingId] = useState(initialDraft?.deletingId ?? null)
+  const [status, setStatus] = useState(initialDraft?.status ?? '')
+  const [error, setError] = useState(initialDraft?.error ?? '')
+  const draft = useMemo(() => ({
+    notes, query, text, pendingBackup, editingId, editText, deletingId, status, error, loading: isLoading,
+  }), [notes, query, text, pendingBackup, editingId, editText, deletingId, status, error, isLoading])
+  useImperativeHandle(ref, () => ({
+    draft, busy: isMutating || isExporting || isReadingBackup,
+  }), [draft, isMutating, isExporting, isReadingBackup])
+  useEffect(() => { onDraftChange?.(draft) }, [draft, onDraftChange])
 
   useEffect(() => {
+    if (initialDraft && !initialDraft.loading) return
     let active = true
     fetchNotes()
       .then((data) => {
@@ -44,7 +52,7 @@ export default function Notes() {
         if (active) setIsLoading(false)
       })
     return () => { active = false }
-  }, [])
+  }, [initialDraft])
 
   async function refreshNotes() {
     setIsLoading(true)

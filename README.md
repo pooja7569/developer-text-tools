@@ -6,6 +6,9 @@ The Day 2 notes feature saves plain-text notes in local SQLite.
 Version 1.1 adds a side panel, precision-safe JSON inspection/search, JSON/YAML
 conversion, JWT decoding, JSON comparison, and one explicitly saved local API
 workspace. Advanced tools are available only in a development Pro preview.
+Chrome 141+ is required. Popup, full-page and side-panel switches retain the
+current workspace using temporary browser RAM and close the previous extension
+surface; only explicit workspace saves persist to disk.
 Billing and sign-in are disabled by default; there are no real paid subscriptions.
 Optional Google sign-in and Stripe **test-only** billing code is prepared.
 See [account and billing setup](BILLING_SETUP.md) for dashboard configuration,
@@ -39,6 +42,11 @@ The initial build is in `frontend\dist`.
 5. Pin **DevToolBox** from the Extensions menu.
 6. Open its popup, expand **Local backend and notes**, and click **Fetch from Backend**.
 7. Expect: `Hello from your Django backend!`
+
+After every frontend rebuild, click **Reload** on the DevToolBox card at
+`chrome://extensions` before reopening it. Rebuilding files alone does not
+replace Chrome's running background worker. Reloading clears temporary drafts,
+but keeps explicitly saved workspaces and backend notes.
 
 ## Day 2: Save and list notes
 

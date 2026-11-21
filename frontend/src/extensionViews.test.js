@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { afterEach, test } from 'node:test'
-import { isPopupView, openFullPage, openSidePanel } from './extensionViews.js'
+import { isFullPageView, isPopupView, isSidePanelView } from './extensionViews.js'
 
 const original = Object.getOwnPropertyDescriptor(globalThis, 'chrome')
 afterEach(() => {
@@ -23,50 +23,24 @@ test('only the actual popup window gets the fixed popup layout', () => {
   assert.equal(isPopupView(tab), false)
 })
 
-test('opens the side panel in the active Chrome window', async () => {
-  globalThis.chrome = {
-    tabs: { async query(options) {
-      assert.deepEqual(options, { active: true, currentWindow: true })
-      return [{ windowId: 42 }]
-    } },
-    sidePanel: { async open(options) { assert.deepEqual(options, { windowId: 42 }) } },
-  }
-  await openSidePanel()
-})
-
-test('side-panel failures report missing APIs, absent windows and Chrome rejection', async () => {
+test('full-page detection distinguishes the extension tab from other views', () => {
+  const tab = {}
+  globalThis.chrome = { extension: { getViews(options) {
+    assert.deepEqual(options, { type: 'tab' })
+    return [tab]
+  } } }
+  assert.equal(isFullPageView(tab), true)
+  assert.equal(isFullPageView({}), false)
+  assert.equal(isFullPageView(undefined), false)
   delete globalThis.chrome
-  await assert.rejects(openSidePanel(), /Chrome 116/)
-  globalThis.chrome = { sidePanel: { open() {} } }
-  await assert.rejects(openSidePanel(), /loaded extension/)
-  globalThis.chrome.tabs = { async query() { return [] } }
-  await assert.rejects(openSidePanel(), /No active Chrome window/)
-  const failure = new Error('Chrome denied panel opening')
-  globalThis.chrome.tabs.query = async () => [{ windowId: 42 }]
-  globalThis.chrome.sidePanel.open = async () => { throw failure }
-  await assert.rejects(openSidePanel(), error => error === failure)
+  assert.equal(isFullPageView(tab), false)
 })
-
-test('full-page view opens this extension entry point in an active tab', async () => {
-  globalThis.chrome = {
-    runtime: { getURL(path) {
-      assert.equal(path, 'index.html')
-      return 'chrome-extension://test-id/index.html'
-    } },
-    tabs: { async create(options) {
-      assert.deepEqual(options, { url: 'chrome-extension://test-id/index.html', active: true })
-    } },
-  }
-  await openFullPage()
-})
-
-test('full-page view reports unavailable APIs and failed tab creation', async () => {
+test('side-panel detection requires its own extension path and view marker', () => {
+  const entry = 'chrome-extension://test-id/index.html'
+  globalThis.chrome = { runtime: { getURL: () => entry } }
+  assert.equal(isSidePanelView({ location: { href: `${entry}?view=side-panel` } }), true)
+  assert.equal(isSidePanelView({ location: { href: entry } }), false)
+  assert.equal(isSidePanelView({ location: { href: 'https://example.com/?view=side-panel' } }), false)
   delete globalThis.chrome
-  await assert.rejects(openFullPage(), /installed Chrome extension/)
-  globalThis.chrome = { runtime: { getURL() {} } }
-  await assert.rejects(openFullPage(), /full-page view/)
-  const failure = new Error('Chrome refused the new tab')
-  globalThis.chrome.runtime.getURL = () => 'chrome-extension://test-id/index.html'
-  globalThis.chrome.tabs = { async create() { throw failure } }
-  await assert.rejects(openFullPage(), error => error === failure)
+  assert.equal(isSidePanelView({ location: { href: `${entry}?view=side-panel` } }), false)
 })

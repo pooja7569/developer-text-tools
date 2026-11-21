@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useImperativeHandle, useMemo, useState } from 'react'
 import { convertLogToCsv, formatJson } from './tools.js'
 import { scrapeHighlightedText } from './selection.js'
 import { downloadText } from './download.js'
@@ -26,30 +26,37 @@ const TOOLS = {
   csv: { label: 'Log to CSV', action: 'Download CSV', input: 'Log input' },
 }
 
-export default function Workspace() {
-  const [tab, setTab] = useState('Tools')
-  const [tool, setTool] = useState('json')
-  const [input, setInput] = useState('')
-  const [baseline, setBaseline] = useState('')
-  const [output, setOutput] = useState('')
-  const [extension, setExtension] = useState('txt')
-  const [error, setError] = useState('')
-  const [status, setStatus] = useState('')
+export default function Workspace({ initialDraft, onDraftChange, ref }) {
+  const [tab, setTab] = useState(initialDraft?.tab ?? 'Tools')
+  const [tool, setTool] = useState(initialDraft?.tool ?? 'json')
+  const [input, setInput] = useState(initialDraft?.input ?? '')
+  const [baseline, setBaseline] = useState(initialDraft?.baseline ?? '')
+  const [output, setOutput] = useState(initialDraft?.output ?? '')
+  const [extension, setExtension] = useState(initialDraft?.extension ?? 'txt')
+  const [error, setError] = useState(initialDraft?.error ?? '')
+  const [status, setStatus] = useState(initialDraft?.status ?? '')
   const [busy, setBusy] = useState(false)
-  const [rows, setRows] = useState([])
-  const [search, setSearch] = useState('')
-  const [changes, setChanges] = useState(null)
-  const [ignores, setIgnores] = useState('')
-  const [redaction, setRedaction] = useState(DEFAULT_REDACTION)
-  const [root, setRoot] = useState('ApiResponse')
-  const [extra, setExtra] = useState('ignore')
-  const [store, setStore] = useState(emptyStore)
-  const [selected, setSelected] = useState('')
-  const [name, setName] = useState('My API')
-  const [backup, setBackup] = useState(null)
-  const [storageReady, setStorageReady] = useState(false)
+  const [rows, setRows] = useState(initialDraft?.rows ?? [])
+  const [search, setSearch] = useState(initialDraft?.search ?? '')
+  const [changes, setChanges] = useState(initialDraft?.changes ?? null)
+  const [ignores, setIgnores] = useState(initialDraft?.ignores ?? '')
+  const [redaction, setRedaction] = useState(initialDraft?.redaction ?? DEFAULT_REDACTION)
+  const [root, setRoot] = useState(initialDraft?.root ?? 'ApiResponse')
+  const [extra, setExtra] = useState(initialDraft?.extra ?? 'ignore')
+  const [store, setStore] = useState(initialDraft?.store ?? emptyStore)
+  const [selected, setSelected] = useState(initialDraft?.selected ?? '')
+  const [name, setName] = useState(initialDraft?.name ?? 'My API')
+  const [backup, setBackup] = useState(initialDraft?.backup ?? null)
+  const [storageReady, setStorageReady] = useState(initialDraft?.storageReady ?? false)
   const [account, setAccount] = useState({ signedIn: false, pro: false })
   const canPro = proPreview || account.pro
+  const draft = useMemo(() => ({
+    tab, tool, input, baseline, output, extension, error, status, rows, search, changes,
+    ignores, redaction, root, extra, store, selected, name, backup, storageReady,
+  }), [tab, tool, input, baseline, output, extension, error, status, rows, search, changes,
+    ignores, redaction, root, extra, store, selected, name, backup, storageReady])
+  useImperativeHandle(ref, () => ({ draft, busy }), [draft, busy])
+  useEffect(() => { onDraftChange?.(draft) }, [draft, onDraftChange])
 
   useEffect(() => {
     let active = true
@@ -123,7 +130,7 @@ export default function Workspace() {
     })
     setStore(next)
     setSelected(next.workspaces.at(-1).id)
-    setStatus('JSON workspace saved on this device. Tokens and outputs are not auto-saved.')
+    setStatus('JSON workspace saved on this device. Tokens and outputs are not included in saved workspaces.')
   }
 
   function load(workspace) {
@@ -243,7 +250,7 @@ export default function Workspace() {
           }}>Clear drafts</button>
         </div>
         </div>
-        <p className="hint draft-hint">Drafts are temporary. Save a workspace to keep your JSON.</p>
+        <p className="hint draft-hint">Drafts stay in browser memory. Save a workspace to keep your JSON.</p>
         </section>
         {tab === 'Compare' && <section className="baseline-pane" aria-label="Comparison baseline">
           <div className="editor-heading"><label htmlFor="baseline">Baseline JSON</label></div>

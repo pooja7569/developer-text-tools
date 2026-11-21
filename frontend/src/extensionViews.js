@@ -1,22 +1,18 @@
-export function isPopupView(view) {
+function isView(view, type) {
   const extension = globalThis.chrome?.extension
-  return Boolean(view && extension?.getViews && extension.getViews({ type: 'popup' }).includes(view))
+  return Boolean(view && extension?.getViews && extension.getViews({ type }).includes(view))
 }
 
-export async function openSidePanel() {
-  const browser = globalThis.chrome
-  if (!browser?.sidePanel?.open || !browser?.tabs?.query) {
-    throw new Error('Side panel requires Chrome 116 or newer and the loaded extension.')
-  }
-  const [tab] = await browser.tabs.query({ active: true, currentWindow: true })
-  if (!Number.isInteger(tab?.windowId)) throw new Error('No active Chrome window.')
-  await browser.sidePanel.open({ windowId: tab.windowId })
+export function isPopupView(view) {
+  return isView(view, 'popup')
 }
 
-export async function openFullPage() {
-  const browser = globalThis.chrome
-  if (!browser?.runtime?.getURL || !browser?.tabs?.create) {
-    throw new Error('Open the installed Chrome extension to use full-page view.')
-  }
-  await browser.tabs.create({ url: browser.runtime.getURL('index.html'), active: true })
+export function isFullPageView(view) {
+  return isView(view, 'tab') && !isSidePanelView(view)
+}
+
+export function isSidePanelView(view) {
+  const entry = globalThis.chrome?.runtime?.getURL?.('index.html')
+  return Boolean(entry && view?.location?.href?.split(/[?#]/)[0] === entry
+    && new URL(view.location.href).searchParams.get('view') === 'side-panel')
 }

@@ -9,7 +9,16 @@ data into developer-tool inputs.
   comparison, and highlighted-text capture run inside the extension popup or
   side panel. Generation, redaction, and batch comparisons
   also run locally. These actions do not upload their inputs. JWT signatures
-  are not verified. JWT tool inputs and tool outputs are not automatically saved.
+  are not verified. JWT tool inputs and tool outputs are not included in
+  explicitly saved workspaces.
+- **Temporary view continuity:** Current inputs, baseline, generated output,
+  tool/tab selection, presets, and local note drafts are automatically kept
+  in trusted `chrome.storage.session` memory so popup/full-page/side-panel
+  switches retain the same values. This cache includes JWT inputs and outputs.
+  It is separate for each Chrome window, is not written to disk or uploaded,
+  and is cleared when the window closes, Chrome restarts, or the extension
+  reloads. **Clear drafts** clears the current developer-tool inputs/output;
+  local note drafts have their own form controls.
 - **Explicit local storage:** Clicking **Save workspace** stores the workspace
   name, baseline/current JSON, applicable presets, and update time in this
   extension's `chrome.storage.local` on this Chrome profile. No cloud sync is

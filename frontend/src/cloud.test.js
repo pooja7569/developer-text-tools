@@ -63,6 +63,50 @@ test('only the explicit pro-preview mode enables advanced workspace mutations', 
   }
 })
 
+test('full-page and side-panel views each offer their own Exit action', async () => {
+  const previousOrigin = process.env.VITE_TOOLS_API_ORIGIN
+  const descriptors = new Map(['window', 'chrome'].map(key => [key, Object.getOwnPropertyDescriptor(globalThis, key)]))
+  process.env.VITE_TOOLS_API_ORIGIN = 'https://tools.example.com'
+  let server
+  try {
+    server = await createServer({ mode: 'cloud', server: { middlewareMode: true, ws: false }, appType: 'custom' })
+    const { default: App } = await server.ssrLoadModule('/src/App.jsx')
+    const entry = 'chrome-extension://test-id/index.html'
+    const view = { location: { href: entry } }
+    globalThis.window = view
+    for (const context of ['tab', 'popup', 'side-panel']) {
+      view.location.href = context === 'side-panel' ? `${entry}?view=side-panel` : entry
+      globalThis.chrome = {
+        runtime: { getURL: () => entry },
+        extension: { getViews: ({ type }) => type === context ? [view] : [] },
+      }
+      const html = renderToStaticMarkup(createElement(App))
+      if (context === 'tab') {
+        assert.match(html, />Exit full page<\/button>/)
+        assert.doesNotMatch(html, />Open full page<\/button>/)
+      } else {
+        assert.match(html, />Open full page<\/button>/)
+        assert.doesNotMatch(html, />Exit full page<\/button>/)
+      }
+      if (context === 'side-panel') {
+        assert.match(html, />Exit side panel<\/button>/)
+        assert.doesNotMatch(html, />Open side panel<\/button>/)
+      } else {
+        assert.match(html, />Open side panel<\/button>/)
+        assert.doesNotMatch(html, />Exit side panel<\/button>/)
+      }
+    }
+  } finally {
+    if (server) await server.close()
+    if (previousOrigin === undefined) delete process.env.VITE_TOOLS_API_ORIGIN
+    else process.env.VITE_TOOLS_API_ORIGIN = previousOrigin
+    for (const [key, descriptor] of descriptors) {
+      if (descriptor) Object.defineProperty(globalThis, key, descriptor)
+      else delete globalThis[key]
+    }
+  }
+})
+
 test('account-enabled cloud UI labels billing as TEST and does not include local notes', async () => {
   const previousEnabled = process.env.VITE_ACCOUNTS_ENABLED
   const previousOrigin = process.env.VITE_TOOLS_API_ORIGIN
@@ -87,5 +131,41 @@ test('account-enabled cloud UI labels billing as TEST and does not include local
     else process.env.VITE_ACCOUNTS_ENABLED = previousEnabled
     if (previousOrigin === undefined) delete process.env.VITE_TOOLS_API_ORIGIN
     else process.env.VITE_TOOLS_API_ORIGIN = previousOrigin
+  }
+})
+
+test('a restored view retains actual editor values, selected tool, baseline and unsaved local note fields', async () => {
+  const server = await createServer({ mode: 'production', server: { middlewareMode: true, ws: false }, appType: 'custom' })
+  try {
+    const { default: App } = await server.ssrLoadModule('/src/App.jsx')
+    const snapshot = {
+      app: { message: 'Restored response', error: '', localToolsOpen: true },
+      workspace: {
+        tab: 'Tools', tool: 'json-yaml', input: '{"id":9007199254740993123,"text":"<&"}',
+        baseline: '{"id":1}', output: 'id: 9007199254740993123\n', extension: 'yaml',
+      },
+      notes: { notes: [], text: 'Unsaved local note <&', query: 'find this' },
+    }
+    const render = () => renderToStaticMarkup(createElement(App, {
+      initialSnapshot: snapshot, viewContext: { mode: 'full-page', windowId: 7 },
+    }))
+    const assertTextarea = (html, id, value) => {
+      const encoded = renderToStaticMarkup(createElement('span', null, value)).slice(6, -7)
+      const match = html.match(new RegExp(`<textarea[^>]*id="${id}"[^>]*>([\\s\\S]*?)<\\/textarea>`))
+      assert.equal(match?.[1], encoded)
+    }
+    let html = render()
+    assertTextarea(html, 'tool-input', snapshot.workspace.input)
+    assertTextarea(html, 'tool-output', snapshot.workspace.output)
+    assertTextarea(html, 'note-text', snapshot.notes.text)
+    assert.match(html, /JSON to YAML/)
+    assert.match(html, /<details class="local-tools" open=""/)
+    assert.match(html, /id="note-search"[^>]*value="find this"/)
+    snapshot.workspace.tab = 'Compare'
+    html = render()
+    assertTextarea(html, 'baseline', snapshot.workspace.baseline)
+    assertTextarea(html, 'tool-input', snapshot.workspace.input)
+  } finally {
+    await server.close()
   }
 })
