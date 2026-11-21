@@ -1,9 +1,16 @@
-# Local Chrome extension + Django
+# DevToolBox v1.1
 
 A Manifest V3 React popup that calls
 `http://127.0.0.1:8000/api/greet/`.
 The Day 2 notes feature saves plain-text notes in local SQLite.
-The final tools add selection capture, local JSON formatting, and log-to-CSV.
+Version 1.1 adds a side panel, precision-safe JSON inspection/search, JSON/YAML
+conversion, JWT decoding, JSON comparison, and one explicitly saved local API
+workspace. Advanced tools are available only in a development Pro preview.
+Billing and sign-in are disabled by default; there are no real paid subscriptions.
+Optional Google sign-in and Stripe **test-only** billing code is prepared.
+See [account and billing setup](BILLING_SETUP.md) for dashboard configuration,
+local testing and PostgreSQL deployment. No bank details are needed for testing.
+Start with the [v1.1 testing and release guide](V1_1.md).
 See [deployment and architecture](DEPLOYMENT.md) and the
 [three-paragraph store framework](STORE_LISTING.md).
 
@@ -29,8 +36,8 @@ The initial build is in `frontend\dist`.
 2. Enable **Developer mode**.
 3. Choose **Load unpacked**.
 4. Select the project's `frontend\dist` folder.
-5. Pin **Local Django Popup** from the Extensions menu.
-6. Open its popup and click **Fetch from Backend**.
+5. Pin **DevToolBox** from the Extensions menu.
+6. Open its popup, expand **Local backend and notes**, and click **Fetch from Backend**.
 7. Expect: `Hello from your Django backend!`
 
 ## Day 2: Save and list notes
@@ -202,8 +209,9 @@ exclude the virtual environment, database, build output, and `node_modules`.
 
 - Django uses the supported 5.2 LTS release line and binds only to loopback.
 - Selection capture uses a one-shot, user-triggered script in the active tab.
-  No persistent content script or background worker runs.
-- Requests omit cookies and time out after five seconds.
+  No persistent content script runs. A local service worker serializes workspace
+  storage operations; it does not monitor tabs, capture traffic, or upload data.
+- Requests omit cookies. Notes/greeting time out after five seconds; CSV after ten.
 - CORS allows only this extension; browser host permission is also declared.
 - The popup CSP restricts connections to `http://127.0.0.1:8000`.
 - The greeting is public; the notes API has a local request guard, not user
@@ -219,10 +227,11 @@ exclude the virtual environment, database, build output, and `node_modules`.
 ## JSON, highlighted text, and CSV
 
 1. Select text on an ordinary HTTP/HTTPS webpage.
-2. Open the extension and click **Scrape Highlighted Text**.
-3. The captured text replaces **JSON or log input** without uploading it.
-4. Click **Format JSON** to format valid JSON locally.
-5. For logs, click **Download CSV**. This sends only the input to the configured
+2. Open the extension and click **Capture selection**.
+3. The captured text replaces the input without uploading it.
+4. Click **Format JSON** to format valid JSON locally without rounding numbers.
+5. For logs, choose **Log to CSV** in the **Tool** selector, then click
+   **Download CSV**. This sends only the input to the configured
    backend and starts a `logs.csv` download. Check Chrome Downloads with Ctrl+J.
 
 Try this log input:

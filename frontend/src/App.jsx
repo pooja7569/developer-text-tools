@@ -1,141 +1,80 @@
 import { useState } from 'react'
 import { fetchGreeting } from './api'
 import Notes from './Notes'
-import { scrapeHighlightedText } from './selection'
-import { convertLogToCsv, formatJson } from './tools'
-import { downloadText } from './download'
+import Workspace from './Workspace.jsx'
+import { openFullPage, openSidePanel } from './extensionViews.js'
 
 const cloudBuild = import.meta.env?.VITE_CLOUD_BUILD === 'true'
 
 export default function App() {
-  const [message, setMessage] = useState('Ready to connect.')
-  const [isLoading, setIsLoading] = useState(false)
-  const [hasError, setHasError] = useState(false)
-  const [inputText, setInputText] = useState('')
-  const [toolBusy, setToolBusy] = useState(false)
-  const [toolError, setToolError] = useState('')
-  const [toolStatus, setToolStatus] = useState('')
+  const [message, setMessage] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+  const [panelError, setPanelError] = useState('')
+  const [pageError, setPageError] = useState('')
 
-  async function runTool(action) {
-    setToolBusy(true)
-    setToolError('')
-    setToolStatus('')
+  async function openPanel() {
+    setPanelError('')
     try {
-      await action()
-    } catch (error) {
-      console.error(
-        'Developer tool failed:', error instanceof Error ? error.name : 'UnknownError',
-      )
-      setToolError(
-        error?.name === 'TimeoutError'
-          ? 'Request timed out. Check the backend and try again.'
-          : error instanceof Error ? error.message : 'Unexpected tool failure.',
-      )
-    } finally {
-      setToolBusy(false)
+      await openSidePanel()
+    } catch (failure) {
+      console.error('Side panel failed:', failure.name)
+      setPanelError(failure.message)
     }
   }
 
-  function captureSelection() {
-    return runTool(async () => {
-      setInputText(await scrapeHighlightedText())
-      setToolStatus('Highlighted text copied into the input. Nothing was uploaded.')
-    })
-  }
-
-  function downloadCsv() {
-    return runTool(async () => {
-      const csv = await convertLogToCsv(inputText)
-      downloadText('\uFEFF' + csv, 'logs.csv', 'text/csv;charset=utf-8')
-      setToolStatus('CSV download requested. Check Chrome Downloads.')
-    })
+  async function openPage() {
+    setPageError('')
+    try {
+      await openFullPage()
+    } catch (failure) {
+      console.error('Full-page view failed:', failure.name)
+      setPageError(failure.message)
+    }
   }
 
   async function handleFetch() {
-    setIsLoading(true)
-    setHasError(false)
+    setLoading(true)
+    setError('')
     setMessage('Connecting...')
-
     try {
       setMessage(await fetchGreeting())
-    } catch (error) {
-      console.error('Greeting request failed:', error)
-      setHasError(true)
-
-      if (error instanceof Error && error.name === 'TimeoutError') {
-        setMessage('Request timed out. Check that Django is running.')
-      } else if (error instanceof TypeError) {
-        setMessage(
-          'Cannot reach Django. Check the server and extension permissions.',
-        )
-      } else {
-        setMessage(
-          error instanceof Error ? error.message : 'Unexpected request failure.',
-        )
-      }
+    } catch (failure) {
+      console.error('Greeting request failed:', failure.name)
+      setError(failure.name === 'TimeoutError'
+        ? 'Request timed out. Check that Django is running.'
+        : failure instanceof TypeError ? 'Cannot reach Django. Check the server and extension permissions.'
+          : failure.message)
+      setMessage('')
     } finally {
-      setIsLoading(false)
+      setLoading(false)
     }
   }
 
   return (
-    <main aria-busy={isLoading}>
-      <h1>Developer tools</h1>
-      <section aria-label="JSON and log tools" aria-busy={toolBusy}>
-        <label htmlFor="tool-input">JSON or log input</label>
-        <textarea
-          id="tool-input"
-          rows={7}
-          value={inputText}
-          onChange={(event) => setInputText(event.target.value)}
-          disabled={toolBusy}
-          aria-describedby="tool-privacy"
-        />
-        <p id="tool-privacy" className="hint">
-          JSON formatting and capture stay in this popup. CSV conversion sends
-          your input to {cloudBuild ? 'the configured HTTPS server' : 'local Django'}.
-          Do not send secrets or sensitive logs.
-        </p>
-        <button type="button" onClick={captureSelection} disabled={toolBusy}>
-          Scrape Highlighted Text
-        </button>
-        <div className="note-actions">
-          <button
-            type="button"
-            className="secondary"
-            disabled={toolBusy || !inputText.trim()}
-            onClick={() => runTool(async () => {
-              setInputText(formatJson(inputText))
-              setToolStatus('JSON formatted locally.')
-            })}
-          >
-            Format JSON
-          </button>
-          <button
-            type="button"
-            className="secondary"
-            onClick={downloadCsv}
-            disabled={toolBusy || !inputText.trim()}
-          >
-            Download CSV
-          </button>
+    <main>
+      <header><h1>DevToolBox <small>v1.1</small></h1>
+        <div className="view-actions">
+          <div className="view-action">
+            <button type="button" className="secondary" onClick={openPanel}
+              aria-describedby={panelError ? 'side-panel-error' : undefined}>Open side panel</button>
+            {panelError && <p id="side-panel-error" className="error view-error" role="alert">{panelError}</p>}
+          </div>
+          <div className="view-action">
+            <button type="button" className="secondary" onClick={openPage}
+              title="Opens a new workspace view. Save a workspace first to keep drafts."
+              aria-describedby={pageError ? 'full-page-error' : undefined}>Open full page</button>
+            {pageError && <p id="full-page-error" className="error view-error" role="alert">{pageError}</p>}
+          </div>
         </div>
-        {toolError && <p className="error" role="alert">{toolError}</p>}
-        <p role="status" aria-live="polite">{toolStatus}</p>
-      </section>
-      {!cloudBuild && <>
-      <button type="button" onClick={handleFetch} disabled={isLoading}>
-        Fetch from Backend
-      </button>
-      <p
-        className={hasError ? 'message error' : 'message'}
-        role="status"
-        aria-live="polite"
-      >
-        {message}
-      </p>
-      <Notes />
-      </>}
+      </header>
+      <Workspace />
+      {error && <p className="error" role="alert">{error}</p>}
+      {!cloudBuild && <details className="local-tools"><summary>Local backend and notes</summary>
+        <button type="button" onClick={handleFetch} disabled={loading}>Fetch from Backend</button>
+        <p role="status">{message}</p>
+        <Notes />
+      </details>}
     </main>
   )
 }

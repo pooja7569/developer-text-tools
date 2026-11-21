@@ -5,7 +5,10 @@ import { defineConfig, loadEnv } from 'vite'
 
 export default defineConfig(({ mode }) => {
   const cloud = mode === 'cloud'
+  const proPreview = mode === 'pro-preview'
   const env = loadEnv(mode, process.cwd(), 'VITE_')
+  const accounts = env.VITE_ACCOUNTS_ENABLED === 'true'
+  if (accounts && proPreview) throw new Error('Use a normal build for account/test-billing integration, not the Pro preview.')
   const rawOrigin = env.VITE_TOOLS_API_ORIGIN || (cloud ? '' : 'http://127.0.0.1:8000')
   if (!rawOrigin) throw new Error('Set VITE_TOOLS_API_ORIGIN before a cloud build.')
   const url = new URL(rawOrigin)
@@ -23,14 +26,16 @@ export default defineConfig(({ mode }) => {
   const manifest = {
     ...source,
     ...(cloud && {
-      name: 'JSON Formatter & Log Utility',
-      description: 'Format JSON locally, capture selected text, and convert logs to CSV.',
+      name: 'DevToolBox: JSON & API Workspace',
     }),
     host_permissions: [`${url.protocol}//${url.hostname}/*`],
     content_security_policy: {
       extension_pages: `script-src 'self'; object-src 'none'; connect-src ${url.origin}`,
     },
   }
+  // Chrome Web Store assigns the published identity; never ship the local development key.
+  if (cloud) delete manifest.key
+  if (accounts) manifest.permissions = [...manifest.permissions, 'identity']
   return {
     plugins: [
       react(),
@@ -44,10 +49,21 @@ export default defineConfig(({ mode }) => {
       },
     ],
     base: './',
-    build: { outDir: cloud ? 'dist-cloud' : 'dist' },
+    build: {
+      outDir: cloud ? 'dist-cloud' : proPreview ? 'dist-pro-preview' : 'dist',
+      rollupOptions: {
+        input: {
+          index: resolve(process.cwd(), 'index.html'),
+          background: resolve(process.cwd(), 'src/background.js'),
+        },
+        output: { entryFileNames: (chunk) => chunk.name === 'background' ? 'background.js' : 'assets/[name]-[hash].js' },
+      },
+    },
     define: {
       'import.meta.env.VITE_TOOLS_API_ORIGIN': JSON.stringify(url.origin),
       'import.meta.env.VITE_CLOUD_BUILD': JSON.stringify(String(cloud)),
+      'import.meta.env.VITE_PRO_PREVIEW': JSON.stringify(String(proPreview)),
+      'import.meta.env.VITE_ACCOUNTS_ENABLED': JSON.stringify(String(accounts)),
     },
   }
 })

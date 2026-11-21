@@ -8,7 +8,10 @@ __pycache__/
 frontend/node_modules/
 frontend/dist/
 frontend/dist-cloud/
+frontend/dist-pro-preview/
+devtoolbox-workspace*.json
 frontend/extension-cloud.zip
+frontend/extension-v1.1.zip
 *.sqlite3-*
 local-notes-*.json
 logs.csv

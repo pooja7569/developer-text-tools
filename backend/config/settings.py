@@ -1,6 +1,7 @@
 import os
 import re
 from pathlib import Path
+from urllib.parse import urlsplit
 
 from corsheaders.defaults import default_headers
 from django.core.exceptions import ImproperlyConfigured
@@ -13,6 +14,8 @@ if ENVIRONMENT not in {'development', 'production'}:
 IS_PRODUCTION = ENVIRONMENT == 'production'
 DEBUG = not IS_PRODUCTION
 LOCAL_NOTES_ENABLED = not IS_PRODUCTION
+ACCOUNTS_ENABLED = os.environ.get('DJANGO_ACCOUNTS_ENABLED') == 'true'
+BILLING_TEST_ENABLED = os.environ.get('DJANGO_BILLING_TEST_ENABLED') == 'true'
 
 SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', '')
 if IS_PRODUCTION and (
@@ -43,6 +46,7 @@ INSTALLED_APPS = [
     'rest_framework',
     'corsheaders',
     'api',
+    'accounts',
 ]
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
@@ -64,6 +68,15 @@ DATABASES = {
         'NAME': os.environ.get('DJANGO_SQLITE_PATH', str(BASE_DIR / 'db.sqlite3')),
     },
 }
+if ACCOUNTS_ENABLED and IS_PRODUCTION:
+    import dj_database_url
+
+    database_url = os.environ.get('DATABASE_URL', '')
+    if not database_url.startswith(('postgres://', 'postgresql://')):
+        raise ImproperlyConfigured('Accounts require a persistent PostgreSQL DATABASE_URL in production.')
+    DATABASES['default'] = dj_database_url.parse(
+        database_url, conn_max_age=60, conn_health_checks=True, ssl_require=True,
+    )
 LANGUAGE_CODE = 'en-us'
 TIME_ZONE = 'UTC'
 USE_I18N = True
@@ -91,10 +104,39 @@ CORS_ALLOW_HEADERS = [*default_headers, 'x-local-notes', 'x-developer-tools']
 CORS_URLS_REGEX = r'^/api/.*$'
 REST_FRAMEWORK = {
     'DEFAULT_RENDERER_CLASSES': ['rest_framework.renderers.JSONRenderer'],
-    'DEFAULT_THROTTLE_RATES': {'anon': '30/min'},
+    'DEFAULT_THROTTLE_RATES': {'anon': '30/min', 'accounts': '20/min'},
     # Render's trusted edge supplies X-Forwarded-For; direct local requests do not.
     'NUM_PROXIES': 1 if os.environ.get('DJANGO_TRUST_PROXY') == 'true' else 0,
 }
+
+ACCOUNT_API_ORIGIN = os.environ.get('DJANGO_PUBLIC_ORIGIN', '')
+GOOGLE_CLIENT_ID = os.environ.get('GOOGLE_CLIENT_ID', '')
+GOOGLE_CLIENT_SECRET = os.environ.get('GOOGLE_CLIENT_SECRET', '')
+STRIPE_SECRET_KEY = os.environ.get('STRIPE_SECRET_KEY', '')
+STRIPE_WEBHOOK_SECRET = os.environ.get('STRIPE_WEBHOOK_SECRET', '')
+STRIPE_PRICE_ID = os.environ.get('STRIPE_PRICE_ID', '')
+STRIPE_API_VERSION = '2025-03-31.basil'
+if BILLING_TEST_ENABLED and not ACCOUNTS_ENABLED:
+    raise ImproperlyConfigured('Enable accounts before test billing.')
+if ACCOUNTS_ENABLED:
+    public = urlsplit(ACCOUNT_API_ORIGIN)
+    if (
+        public.username or public.password or public.query or public.fragment
+        or public.path not in {'', '/'} or not public.netloc
+        or (public.scheme != 'https' and not (
+            not IS_PRODUCTION and public.scheme == 'http' and public.hostname == '127.0.0.1'
+        ))
+    ):
+        raise ImproperlyConfigured('Set DJANGO_PUBLIC_ORIGIN to the external HTTPS API origin (loopback HTTP allowed locally).')
+    ACCOUNT_API_ORIGIN = ACCOUNT_API_ORIGIN.rstrip('/')
+    if not GOOGLE_CLIENT_ID or not GOOGLE_CLIENT_SECRET:
+        raise ImproperlyConfigured('Set Google web OAuth client credentials on the server to enable accounts.')
+if BILLING_TEST_ENABLED and (
+    not STRIPE_SECRET_KEY.startswith('sk_test_')
+    or not STRIPE_WEBHOOK_SECRET.startswith('whsec_')
+    or not STRIPE_PRICE_ID.startswith('price_')
+):
+    raise ImproperlyConfigured('Only Stripe TEST keys, a signed webhook secret, and a test Price are supported. Live billing is disabled.')
 
 SECURE_SSL_REDIRECT = IS_PRODUCTION
 SESSION_COOKIE_SECURE = IS_PRODUCTION

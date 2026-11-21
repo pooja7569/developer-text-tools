@@ -32,7 +32,7 @@ export async function scrapeHighlightedText() {
     })
   } catch (error) {
     throw new Error(
-      'Chrome blocked access to this page. Try a regular webpage outside the Web Store.',
+      'Chrome blocked access to this page. Open the toolbar popup on this tab to grant access, or try a regular webpage outside the Web Store.',
       { cause: error },
     )
   }
